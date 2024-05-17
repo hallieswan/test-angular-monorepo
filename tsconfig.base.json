@@ -15,6 +15,9 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@angular-monorepo/sage-visualizations": [
+        "libs/sage-visualizations/src/index.ts"
+      ],
       "@angular-monorepo/visualizations": ["libs/visualizations/src/index.ts"]
     }
   },

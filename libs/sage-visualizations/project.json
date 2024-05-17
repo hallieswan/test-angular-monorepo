@@ -1,0 +1,19 @@
+{
+  "name": "sage-visualizations",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/sage-visualizations/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/sage-visualizations",
+        "main": "libs/sage-visualizations/src/index.ts",
+        "tsConfig": "libs/sage-visualizations/tsconfig.lib.json",
+        "assets": ["libs/sage-visualizations/*.md"]
+      }
+    }
+  }
+}
