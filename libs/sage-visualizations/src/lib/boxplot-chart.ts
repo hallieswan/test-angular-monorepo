@@ -1,6 +1,14 @@
 import { ECharts, EChartsOption } from 'echarts';
-import { BoxplotPoint, BoxplotProps } from './models/boxplot';
+import { BoxplotProps, CategoryPoint } from './models/boxplot';
 import { addXAxisLabelTooltips, initChart, setNoDataOption } from './utils';
+import {
+  addXAxisValueToBoxplotSummaries,
+  addXAxisValueToCategoryPoint,
+  formatCategoryPointsForBoxplotTransform,
+  getCategoryPointColor,
+  getCategoryPointShape,
+  getSortedUniqueValues,
+} from './utils-boxplot';
 
 const titleTextStyle = {
   fontWeight: 700,
@@ -43,12 +51,13 @@ export class BoxplotVisualization {
 
     const {
       points,
-      summary,
+      summaries,
       title,
       xAxisTitle,
       yAxisTitle,
       yAxisMin,
       yAxisMax,
+      xAxisCategoryToTooltipText,
       pointTooltipFormatter,
     } = boxplotProps;
 
@@ -57,6 +66,114 @@ export class BoxplotVisualization {
       return;
     }
 
+    const xAxisCategories = getSortedUniqueValues(
+      points,
+      'xAxisCategory'
+    ) as string[];
+    const pointCategories = getSortedUniqueValues(
+      points,
+      'pointCategory'
+    ) as string[];
+    const hasPointCategories = pointCategories.length > 0;
+
+    const dataForScatterPoints = addXAxisValueToCategoryPoint(
+      points,
+      xAxisCategories,
+      pointCategories
+    );
+    const dataForStaticBoxplotSummaries = summaries
+      ? addXAxisValueToBoxplotSummaries(summaries, xAxisCategories)
+      : undefined;
+    const dataForDynamicBoxplots = formatCategoryPointsForBoxplotTransform(
+      dataForScatterPoints,
+      xAxisCategories
+    );
+
+    const datasetOpts: echarts.DatasetComponentOption[] = [
+      // 0: static boxplots
+      {
+        dimensions: dataForStaticBoxplotSummaries
+          ? Object.keys(dataForStaticBoxplotSummaries[0])
+          : undefined,
+        source: dataForStaticBoxplotSummaries,
+      },
+      // 1: points
+      {
+        dimensions: Object.keys(dataForScatterPoints[0]),
+        source: dataForScatterPoints,
+      },
+      // 2: points data formatted for boxplot transform
+      { source: dataForDynamicBoxplots },
+      // 3: dynamic boxplot data
+      {
+        fromDatasetIndex: 2,
+        transform: {
+          type: 'boxplot',
+        },
+      },
+    ];
+
+    const seriesOpts: echarts.SeriesOption[] = [];
+    if (summaries) {
+      // static boxplots
+      seriesOpts.push({
+        type: 'boxplot',
+        datasetIndex: 0,
+        encode: {
+          x: 'xAxisValue',
+          y: ['min', 'firstQuartile', 'median', 'thirdQuartile', 'max'],
+        },
+        z: 1, // ensure that boxplot is shown beneath points
+        itemStyle: boxplotStyle,
+        silent: true,
+      });
+    } else {
+      // dynamic boxplots
+      seriesOpts.push({
+        type: 'boxplot',
+        datasetIndex: 3,
+        tooltip: {
+          show: false,
+        },
+        z: 1, // ensure that boxplot is shown beneath points
+        itemStyle: boxplotStyle,
+        silent: true,
+      });
+    }
+    // points
+    seriesOpts.push({
+      type: 'scatter',
+      datasetIndex: 1,
+      encode: {
+        x: 'xAxisValue',
+        y: 'value',
+      },
+      symbolSize: defaultPointSize,
+      symbol: (point: CategoryPoint) => {
+        return hasPointCategories
+          ? getCategoryPointShape(point, pointCategories)
+          : defaultPointShape;
+      },
+      itemStyle: {
+        color: (params) => {
+          return hasPointCategories
+            ? getCategoryPointColor(
+                params.value as CategoryPoint,
+                pointCategories
+              )
+            : defaultPointColor;
+        },
+      },
+      tooltip: {
+        formatter: (param) => {
+          if (pointTooltipFormatter) {
+            return pointTooltipFormatter(param.data as CategoryPoint);
+          }
+          return '';
+        },
+      },
+    });
+
     const option: EChartsOption = {
       title: [
         {
@@ -64,7 +181,7 @@ export class BoxplotVisualization {
           left: 'center',
           textStyle: titleTextStyle,
         },
-        // add x-axis title as a title rather than xAxis.name.
+        // Add x-axis title as a title rather than xAxis.name, because
         // setting via xAxis.name causes cursor to change to pointer when
         // x-axis label tooltips are used
         {
@@ -74,33 +191,51 @@ export class BoxplotVisualization {
           top: 'bottom',
         },
       ],
-      dataset: [
-        // static boxplots
+      dataset: datasetOpts,
+      // Use two xAxes:
+      //  - value: used to jitter points with multiple pointCategories, where
+      //           xAxisCategory is mapped to 1-based index values for both
+      //           boxplots and points. Axis is not displayed.
+      //  - category: used to display the xAxisCategory and allows xAxis tooltips
+      //           to be displayed, since the event will contain the xAxis label
+      //           value, not the displayed text.
+      xAxis: [
         {
-          dimensions: summary ? Object.keys(summary[0]) : undefined,
-          source: summary,
+          type: 'value',
+          axisLine: {
+            onZero: false,
+          },
+          // Specify min/max values so the value xAxis aligns with the category xAxis
+          min: 0.5,
+          max: function (value) {
+            return Math.round((value.max + 0.5) * 2) / 2;
+          },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: {
+            showMinLabel: false,
+            showMaxLabel: false,
+            show: false,
+          },
         },
-        // single points
         {
-          dimensions: Object.keys(points[0]),
-          source: points,
+          type: 'category',
+          data: xAxisCategories,
+          axisLabel: {
+            color: 'black',
+            fontWeight: 'bold',
+            fontSize: '14px',
+          },
+          axisTick: {
+            alignWithLabel: true,
+          },
+          axisLine: {
+            onZero: false,
+          },
+          triggerEvent: Boolean(xAxisCategoryToTooltipText),
+          position: 'bottom',
         },
       ],
-      xAxis: {
-        type: 'category',
-        triggerEvent: true,
-        axisTick: {
-          alignWithLabel: true,
-        },
-        axisLine: {
-          onZero: false,
-        },
-        axisLabel: {
-          color: 'black',
-          fontWeight: 'bold',
-          fontSize: '14px',
-        },
-      },
       yAxis: {
         type: 'value',
         name: yAxisTitle,
@@ -125,41 +260,7 @@ export class BoxplotVisualization {
         },
         extraCssText: 'opacity: 0.9',
       },
-      series: [
-        {
-          name: 'static boxplot',
-          type: 'boxplot',
-          datasetIndex: 0,
-          encode: {
-            x: 'category',
-            y: ['min', 'firstQuartile', 'median', 'thirdQuartile', 'max'],
-          },
-          itemStyle: boxplotStyle,
-          silent: true,
-        },
-        {
-          name: 'single points',
-          type: 'scatter',
-          datasetIndex: 1,
-          encode: {
-            x: 'category',
-            y: 'value',
-          },
-          symbolSize: defaultPointSize,
-          symbol: () => defaultPointShape,
-          itemStyle: {
-            color: () => defaultPointColor,
-          },
-          tooltip: {
-            formatter: (param) => {
-              if (pointTooltipFormatter) {
-                return pointTooltipFormatter(param.data as BoxplotPoint);
-              }
-              return '';
-            },
-          },
-        },
-      ],
+      series: seriesOpts,
     };
 
     this.chart.setOption(option);

@@ -1,8 +1,8 @@
 import {
-  BoxplotPoint,
   BoxplotProps,
-  BoxplotSummary,
   BoxplotVisualization,
+  CategoryBoxplotSummary,
+  CategoryPoint,
 } from '@angular-monorepo/sage-visualizations';
 import { CommonModule } from '@angular/common';
 import {
@@ -26,15 +26,15 @@ export class BoxplotComponent implements OnChanges, OnInit, OnDestroy {
   @ViewChild('someId', { static: true }) someId: ElementRef | undefined;
   boxplot: BoxplotVisualization | undefined;
 
-  @Input() points: BoxplotPoint[] = [];
-  @Input() summary: BoxplotSummary[] | undefined;
+  @Input() points: CategoryPoint[] = [];
+  @Input() summaries: CategoryBoxplotSummary[] | undefined;
   @Input() title = '';
   @Input() xAxisTitle = '';
   @Input() yAxisTitle = '';
   @Input() yAxisMin: number | undefined;
   @Input() yAxisMax: number | undefined;
   @Input() xAxisCategoryToTooltipText: Record<string, string> | undefined;
-  @Input() pointTooltipFormatter: undefined | ((pt: BoxplotPoint) => string);
+  @Input() pointTooltipFormatter: undefined | ((pt: CategoryPoint) => string);
 
   ngOnInit(): void {
     const domElement = this.someId?.nativeElement as HTMLDivElement;
@@ -57,7 +57,7 @@ export class BoxplotComponent implements OnChanges, OnInit, OnDestroy {
   private getBoxplotProps(): BoxplotProps {
     return {
       points: this.points,
-      summary: this.summary,
+      summaries: this.summaries,
       title: this.title,
       xAxisTitle: this.xAxisTitle,
       yAxisTitle: this.yAxisTitle,

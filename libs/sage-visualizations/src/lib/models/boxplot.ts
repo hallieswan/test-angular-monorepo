@@ -1,7 +1,7 @@
 /* Points to plot on the boxplot */
-export type BoxplotPoint = {
+export type CategoryPoint = {
   // x-axis category for this point
-  xAxisCategory: string | number;
+  xAxisCategory: string;
   // value of this point
   value: number;
   // if defined, will plot this point in the appropriate grid. otherwise, will not use grids.
@@ -10,8 +10,17 @@ export type BoxplotPoint = {
   pointCategory?: string;
 };
 
+export type CategoryAsValuePoint = CategoryPoint & {
+  // x-axis category for this point as a number based on
+  // 1-based indexing of the sorted, unique x-axis category values
+  // if pointCategory values are also defined for the points, then value will be
+  // offset such that all pointCategories are equally spaced around the
+  // original index value
+  xAxisValue: number;
+};
+
 /* Pre-computed boxplot summary statistics */
-export type BoxplotSummary = {
+export type CategoryBoxplotSummary = {
   // x-axis category for this boxplot
   xAxisCategory: string;
   min: number;
@@ -23,11 +32,15 @@ export type BoxplotSummary = {
   gridCategory?: string;
 };
 
+export type CategoryAsValueBoxplotSummary = CategoryBoxplotSummary & {
+  xAxisValue: number;
+};
+
 export interface BoxplotProps {
-  points: BoxplotPoint[];
+  points: CategoryPoint[];
   /* if defined, will be used to plot boxplots. otherwise, will calculate 
   boxplot summary statistics using the provided points. */
-  summary?: BoxplotSummary[];
+  summaries?: CategoryBoxplotSummary[];
   title?: string;
   xAxisTitle?: string;
   yAxisTitle?: string;
@@ -38,5 +51,5 @@ export interface BoxplotProps {
   is the tooltipText. otherwise, tooltips will not be displayed. */
   xAxisCategoryToTooltipText?: Record<string, string>;
   /* if defined, will be used to format tooltip for each point. */
-  pointTooltipFormatter?: (pt: BoxplotPoint) => string;
+  pointTooltipFormatter?: (pt: CategoryPoint) => string;
 }

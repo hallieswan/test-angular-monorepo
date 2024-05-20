@@ -1,2 +1,12 @@
-import type { BoxplotPoint, BoxplotProps, BoxplotSummary } from './boxplot';
-export { BoxplotPoint, BoxplotProps, BoxplotSummary };
+import type {
+  BoxplotProps,
+  CategoryAsValuePoint,
+  CategoryBoxplotSummary,
+  CategoryPoint,
+} from './boxplot';
+export {
+  BoxplotProps,
+  CategoryAsValuePoint,
+  CategoryBoxplotSummary,
+  CategoryPoint,
+};
